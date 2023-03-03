@@ -840,13 +840,20 @@ def convert_trailer_attribute(
 
 @with_production(
     "atom",
-    "atom_parens | atom_squarebrackets | atom_curlybraces | atom_string | atom_basic | atom_ellipses",
+    "atom_parens | atom_squarebrackets | atom_curlybraces | atom_string | atom_basic | atom_ellipses | bmx_selfclosing",
 )
 def convert_atom(
     config: ParserConfig, children: typing.Sequence[typing.Any]
 ) -> typing.Any:
     (child,) = children
     return child
+
+@with_production( "bmx_selfclosing", "'<' NAME '/' '>'")
+def convert_bmx_selfclosing(
+    config: ParserConfig, children: typing.Sequence[typing.Any]
+) -> typing.Any:
+    l_angle, child, slash, r_angle = children
+    return WithLeadingWhitespace(Name(child.string), child.whitespace_before)
 
 
 @with_production("atom_basic", "NAME | NUMBER | 'None' | 'True' | 'False'")
