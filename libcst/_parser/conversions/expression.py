@@ -121,6 +121,8 @@ from libcst._parser.types.partials import (
 from libcst._parser.types.token import Token
 from libcst._parser.whitespace_parser import parse_parenthesizable_whitespace
 
+from libcst._parser.conversions.bmx import convert_bmx_selfclosing
+
 BINOP_TOKEN_LUT: typing.Dict[str, typing.Type[BaseBinaryOp]] = {
     "*": Multiply,
     "@": MatrixMultiply,
@@ -847,13 +849,6 @@ def convert_atom(
 ) -> typing.Any:
     (child,) = children
     return child
-
-@with_production( "bmx_selfclosing", "'<' NAME '/' '>'")
-def convert_bmx_selfclosing(
-    config: ParserConfig, children: typing.Sequence[typing.Any]
-) -> typing.Any:
-    l_angle, child, slash, r_angle = children
-    return WithLeadingWhitespace(Name(child.string), child.whitespace_before)
 
 
 @with_production("atom_basic", "NAME | NUMBER | 'None' | 'True' | 'False'")
