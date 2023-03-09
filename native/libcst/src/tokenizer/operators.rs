@@ -67,6 +67,10 @@ pub const OPERATORS: &[&str] = &[
     //
     //     from __future__ import barry_as_FLUFL
     "<>",
+    // BMX operators
+    "/>",  // SLASHGREATER
+    "</",  // LESSSLASH
+    "</>", // LESSSLASHGREATER
 ];
 
 pub static OPERATOR_RE: Lazy<Regex> = Lazy::new(|| {
