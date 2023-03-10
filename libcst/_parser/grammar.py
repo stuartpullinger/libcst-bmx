@@ -7,6 +7,11 @@ import re
 from functools import lru_cache
 from typing import FrozenSet, Iterator, Mapping, Optional, Tuple, Union
 
+from libcst._parser.conversions.bmx import (
+    convert_bmx_selfclosing,
+    convert_bmx_attribute,
+)
+
 from libcst._parser.conversions.expression import (
     convert_arg_assign_comp_for,
     convert_arglist,
@@ -23,7 +28,6 @@ from libcst._parser.conversions.expression import (
     convert_atom_string,
     convert_binop,
     convert_boolop,
-    convert_bmx_selfclosing,
     convert_comp_for,
     convert_comp_if,
     convert_comp_op,
@@ -243,6 +247,7 @@ _NONTERMINAL_CONVERSIONS_SEQUENCE: Tuple[NonterminalConversion, ...] = (
     convert_atom,
     convert_atom_basic,
     convert_bmx_selfclosing,
+    convert_bmx_attribute,
     convert_atom_parens,
     convert_atom_squarebrackets,
     convert_atom_curlybraces,

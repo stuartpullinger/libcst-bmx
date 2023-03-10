@@ -121,7 +121,6 @@ from libcst._parser.types.partials import (
 from libcst._parser.types.token import Token
 from libcst._parser.whitespace_parser import parse_parenthesizable_whitespace
 
-from libcst._parser.conversions.bmx import convert_bmx_selfclosing
 
 BINOP_TOKEN_LUT: typing.Dict[str, typing.Type[BaseBinaryOp]] = {
     "*": Multiply,

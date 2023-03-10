@@ -24,6 +24,7 @@ from libcst._nodes.op import (
 )
 
 from libcst._nodes.expression import Name
+from libcst._parser.parso.python.py_token import TokenType
 from libcst._parser.production_decorator import with_production
 from libcst._parser.types.config import ParserConfig
 from libcst._parser.types.partials import (
@@ -81,12 +82,12 @@ class BMX(_BaseParenthesizedNode, CSTNode):
 
 
 # bmx_selfclosing: '<' dotted_name [bmx_attribute]* '/>'
-@with_production( "bmx_selfclosing", "'<' dotted_name [bmx_attribute]* '/' '>'")
+@with_production( "bmx_selfclosing", "'<' dotted_name bmx_attribute* '/' '>'")
 def convert_bmx_selfclosing(
     config: ParserConfig, children: typing.Sequence[typing.Any]
 ) -> typing.Any:
     l_angle, child, *attributes, slash, r_angle = children
-    return WithLeadingWhitespace(Name(child.string), child.whitespace_before)
+    return WithLeadingWhitespace(child, l_angle.whitespace_before)
 
 # bmx_openclose: '<' dotted_name [bmx_attribute]* '>' [atom]* '</' dotted_name '>'
 # TODO
@@ -101,7 +102,7 @@ def convert_bmx_attribute(
     # TODO: if eq and value are missing (how is this represented?), assign True token to value
     # OR: create a new node type for single name attributes (what are these called?), then do the conversion in the codemod
     element = DictElement(
-        key.value,
+        Name(key.string) if isinstance(key, TokenType) else key,
         value.value,
         whitespace_before_colon=parse_parenthesizable_whitespace(
             config, eq.whitespace_before
