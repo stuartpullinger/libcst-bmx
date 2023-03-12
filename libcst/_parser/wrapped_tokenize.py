@@ -79,10 +79,12 @@ class _TokenizeState:
 def tokenize(code: str, version_info: PythonVersionInfo) -> Iterator[Token]:
     try:
         from libcst_native import tokenize as native_tokenize
+        print('Using native tokenize')
 
         return native_tokenize.tokenize(code)
     except ImportError:
         lines = split_lines(code, keepends=True)
+        print('Using python tokenize')
         return tokenize_lines(code, lines, version_info)
 
 
@@ -91,10 +93,12 @@ def tokenize_lines(
 ) -> Iterator[Token]:
     try:
         from libcst_native import tokenize as native_tokenize
+        print('Using native tokenize_lines')
 
         # TODO: pass through version_info
         return native_tokenize.tokenize(code)
     except ImportError:
+        print('Using python tokenize_lines')
         return tokenize_lines_py(code, lines, version_info)
 
 

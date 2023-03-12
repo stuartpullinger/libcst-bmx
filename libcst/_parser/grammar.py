@@ -8,7 +8,10 @@ from functools import lru_cache
 from typing import FrozenSet, Iterator, Mapping, Optional, Tuple, Union
 
 from libcst._parser.conversions.bmx import (
+    convert_bmx,
+    convert_bmx_tag,
     convert_bmx_selfclosing,
+    convert_bmx_openclose,
     convert_bmx_attribute,
 )
 
@@ -246,7 +249,10 @@ _NONTERMINAL_CONVERSIONS_SEQUENCE: Tuple[NonterminalConversion, ...] = (
     convert_trailer_arglist,
     convert_atom,
     convert_atom_basic,
+    convert_bmx,
+    convert_bmx_tag,
     convert_bmx_selfclosing,
+    convert_bmx_openclose,
     convert_bmx_attribute,
     convert_atom_parens,
     convert_atom_squarebrackets,

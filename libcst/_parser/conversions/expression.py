@@ -841,7 +841,7 @@ def convert_trailer_attribute(
 
 @with_production(
     "atom",
-    "atom_parens | atom_squarebrackets | atom_curlybraces | atom_string | atom_basic | atom_ellipses | bmx_selfclosing",
+    "atom_parens | atom_squarebrackets | atom_curlybraces | atom_string | atom_basic | atom_ellipses | bmx",
 )
 def convert_atom(
     config: ParserConfig, children: typing.Sequence[typing.Any]
