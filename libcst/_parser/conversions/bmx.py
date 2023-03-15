@@ -78,8 +78,10 @@ class BMX(_BaseParenthesizedNode, CSTNode):
 
 
 # bmx: bmx_selfclosing | bmx_openclose | bmx_fragment
-@with_production("bmx", "bmx_tag (bmx_selfclosing | bmx_openclose)")
+@with_production("bmx", "bmx_fragment | bmx_tag (bmx_selfclosing | bmx_openclose)")
 def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> typing.Any:
+    if len(children) == 1:
+        return children[0]
     tag, rest = children
     l_angle, child, *attributes = tag
     if len(rest) == 2:
@@ -89,12 +91,12 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
                     Element(Dict(tuple(attributes))), 
                     Element(Name("None")))), 
                 l_angle.whitespace_before)
-    close_opentag, contents, open_closetag, close_name, close_closetag = rest
+    close_opentag, *contents, open_closetag, close_name, close_closetag = rest
     return WithLeadingWhitespace(
             Tuple((
                 Element(child), 
                 Element(Dict(tuple(attributes))), 
-                Element(List((contents.value,))))), 
+                Element(List([Element(val.value) for val in contents])))), 
             l_angle.whitespace_before)
 
 
@@ -144,6 +146,14 @@ def convert_bmx_attribute(
 
 
 # bmx_fragment: '<>' [atom]* '</>'
-# TODO
+@with_production("bmx_fragment", "'<>' atom* '</>'")
+def convert_bmx_fragment(config: ParserConfig, children: typing.Sequence[typing.Any]) -> typing.Any:
+    opener, *contents, closer = children
+    return WithLeadingWhitespace(
+            Tuple((
+                Element(Name('None')), 
+                Element(Dict(tuple())), 
+                Element(List([Element(val.value) for val in contents])))), 
+            opener.whitespace_before)
 
 

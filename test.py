@@ -1,2 +1,6 @@
-a_tuple = ("h2", {"once": "twice"}, ["A string"])
-thing = <h1 this="that"> "The Title" </h1>
+a_tuple = (
+    "h2",
+    {"once": "twice", "Three times": "A lady"},
+    ["A string", ("span", {}, ["some text"])],
+)
+thing = <span class_="this"> "some text" </span>

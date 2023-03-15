@@ -13,6 +13,7 @@ from libcst._parser.conversions.bmx import (
     convert_bmx_selfclosing,
     convert_bmx_openclose,
     convert_bmx_attribute,
+    convert_bmx_fragment,
 )
 
 from libcst._parser.conversions.expression import (
@@ -254,6 +255,7 @@ _NONTERMINAL_CONVERSIONS_SEQUENCE: Tuple[NonterminalConversion, ...] = (
     convert_bmx_selfclosing,
     convert_bmx_openclose,
     convert_bmx_attribute,
+    convert_bmx_fragment,
     convert_atom_parens,
     convert_atom_squarebrackets,
     convert_atom_curlybraces,
