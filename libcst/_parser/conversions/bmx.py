@@ -7,6 +7,7 @@ from libcst._nodes.expression import Dict, DictElement, Element, List, Name, Tup
 from libcst._add_slots import add_slots
 from libcst._nodes.base import CSTNode, CSTVisitorT
 from libcst._nodes.expression import (
+    Attribute,
     LeftParen,
     RightParen,
     #List,
@@ -39,13 +40,10 @@ class BMX(_BaseParenthesizedNode, CSTNode):
     A BMX literal
     """
 
-    #: A sequence containing all the :class:`Element` and :class:`StarredElement` nodes
-    #: in the list.
-    elements: typing.Sequence[BaseElement]
+    ref: typing.Sequence[Attribute]
+    attributes: typing.Sequence[Dict]
+    contents: typing.Sequence[BaseElement]
 
-    lbracket: LeftShift = LeftShift.field()
-    #: Brackets surrounding the list.
-    rbracket: RightShift = RightShift.field()
 
     lpar: typing.Sequence[LeftParen] = ()
     #: Sequence of parenthesis for precedence dictation.
@@ -54,20 +52,14 @@ class BMX(_BaseParenthesizedNode, CSTNode):
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BMX":
         return BMX(
             lpar=visit_sequence(self, "lpar", self.lpar, visitor),
-            lbracket=visit_required(self, "lbracket", self.lbracket, visitor),
-            elements=visit_sequence(self, "elements", self.elements, visitor),
-            rbracket=visit_required(self, "rbracket", self.rbracket, visitor),
+            ref=visit_sequence(self, "ref", self.ref, visitor),
+            attributes=visit_sequence(self, "attributes", self.attributes, visitor),
+            contents=visit_sequence(self, "contents", self.contents, visitor),
             rpar=visit_sequence(self, "rpar", self.rpar, visitor),
         )
 
-    @contextmanager
-    def _bracketize(self, state: CodegenState) -> typing.Generator[None, None, None]:
-        self.lbracket._codegen(state)
-        yield
-        self.rbracket._codegen(state)
-
     def _codegen_impl(self, state: CodegenState) -> None:
-        with self._parenthesize(state), self._bracketize(state):
+        with self._parenthesize(state):
             elements = self.elements
             for idx, el in enumerate(elements):
                 el._codegen(
@@ -121,7 +113,11 @@ def convert_bmx_tag(config: ParserConfig, children: typing.Sequence[typing.Any])
     return children
 
 # bmx_attribute: (NAME | atom_string) ['=' atom]
-@with_production( "bmx_attribute", "(NAME | atom_string) ['=' atom]")
+# TODO: look at import keyword; keyword.kwlist  and build a string to allow bmx attributes to be
+# the same as python keywords.
+# import keyword
+# keyword_attributes = ' | '.join(f"'{kw}'" for kw in keyword.kwlist if kw.is_lower())
+@with_production( "bmx_attribute", "('class' | NAME | atom_string) ['=' atom]")
 def convert_bmx_attribute(
     config: ParserConfig, children: typing.Sequence[typing.Any]
 ) -> typing.Any:
