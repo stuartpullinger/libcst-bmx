@@ -3,4 +3,4 @@ a_tuple = (
     {"once": "twice", "Three times": "A lady"},
     ["A string", ("span", {}, ["some text"])],
 )
-thing = <span break="this"> "some text" </span>
+thing = <> <span> "Hello" </span> <p> "world" </p> </>

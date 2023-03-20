@@ -14,6 +14,7 @@ from libcst._nodes.expression import (
     #List,
     BaseElement,
     _BaseParenthesizedNode,
+    BaseParenthesizableWhitespace,
 )
 from libcst._nodes.internal import (
     CodegenState,
@@ -31,44 +32,9 @@ from libcst._parser.production_decorator import with_production
 from libcst._parser.types.config import ParserConfig
 from libcst._parser.types.partials import (
     WithLeadingWhitespace,
+    SimpleWhitespace,
 )
 from libcst._parser.whitespace_parser import parse_parenthesizable_whitespace
-
-@add_slots
-@dataclass(frozen=True)
-class BMX(_BaseParenthesizedNode, CSTNode):
-    """
-    A BMX literal
-    """
-
-    ref: typing.Sequence[Attribute]
-    attributes: typing.Sequence[Dict]
-    contents: typing.Sequence[BaseElement]
-
-
-    lpar: typing.Sequence[LeftParen] = ()
-    #: Sequence of parenthesis for precedence dictation.
-    rpar: typing.Sequence[RightParen] = ()
-
-    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BMX":
-        return BMX(
-            lpar=visit_sequence(self, "lpar", self.lpar, visitor),
-            ref=visit_sequence(self, "ref", self.ref, visitor),
-            attributes=visit_sequence(self, "attributes", self.attributes, visitor),
-            contents=visit_sequence(self, "contents", self.contents, visitor),
-            rpar=visit_sequence(self, "rpar", self.rpar, visitor),
-        )
-
-    def _codegen_impl(self, state: CodegenState) -> None:
-        with self._parenthesize(state):
-            elements = self.elements
-            for idx, el in enumerate(elements):
-                el._codegen(
-                    state,
-                    default_comma=(idx < len(elements) - 1),
-                    default_comma_whitespace=True,
-                )
-
 
 # bmx: bmx_selfclosing | bmx_openclose | bmx_fragment
 @with_production("bmx", "bmx_fragment | bmx_tag (bmx_selfclosing | bmx_openclose)")
@@ -141,15 +107,97 @@ def convert_bmx_attribute(
     return element
 
 
+@add_slots
+@dataclass(frozen=True)
+class StartFragment(CSTNode):
+    """
+    A '<>' node
+    """
+
+    #: Any space that appears directly after this left square bracket.
+    whitespace_after: BaseParenthesizableWhitespace = SimpleWhitespace.field("")
+
+    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "StartFragment":
+        return StartFragment(
+            whitespace_after=visit_required(
+                self, "whitespace_after", self.whitespace_after, visitor
+            )
+        )
+
+    def _codegen_impl(self, state: CodegenState) -> None:
+        state.add_token("<>")
+        self.whitespace_after._codegen(state)
+
+
+@add_slots
+@dataclass(frozen=True)
+class EndFragment(CSTNode):
+    """
+    A '</>' node
+    """
+
+    #: Any space that appears directly after this left square bracket.
+    whitespace_after: BaseParenthesizableWhitespace = SimpleWhitespace.field("")
+
+    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "EndFragment":
+        return EndFragment(
+            whitespace_after=visit_required(
+                self, "whitespace_after", self.whitespace_after, visitor
+            )
+        )
+
+    def _codegen_impl(self, state: CodegenState) -> None:
+        state.add_token("</>")
+        self.whitespace_after._codegen(state)
+
+
+@add_slots
+@dataclass(frozen=True)
+class BmxFragment(_BaseParenthesizedNode, CSTNode):
+    """
+    A BMX fragment node
+    """
+    contents: typing.Sequence[BaseElement]
+    
+    start_fragment: StartFragment = StartFragment.field()
+    end_fragment: EndFragment = EndFragment.field()
+
+    lpar: typing.Sequence[LeftParen] = ()
+    #: Sequence of parenthesis for precedence dictation.
+    rpar: typing.Sequence[RightParen] = ()
+
+    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxFragment":
+        return BmxFragment(
+            lpar=visit_sequence(self, "lpar", self.lpar, visitor),
+            start_fragment=visit_required(self, "start_fragment", self.start_fragment, visitor),
+            contents=visit_sequence(self, "contents", self.contents, visitor),
+            end_fragment=visit_required(self, "end_fragment", self.end_fragment, visitor),
+            rpar=visit_sequence(self, "rpar", self.rpar, visitor),
+        )
+
+    def _codegen_impl(self, state: CodegenState) -> None:
+        with self._parenthesize(state):
+            elements = self.contents
+            self.start_fragment._codegen(state)
+            for idx, el in enumerate(elements):
+                el._codegen(
+                    state,
+                    default_comma=(idx < len(elements) - 1),
+                    default_comma_whitespace=True,
+                )
+            self.end_fragment._codegen(state)
+
+
 # bmx_fragment: '<>' [atom]* '</>'
 @with_production("bmx_fragment", "'<>' atom* '</>'")
 def convert_bmx_fragment(config: ParserConfig, children: typing.Sequence[typing.Any]) -> typing.Any:
     opener, *contents, closer = children
     return WithLeadingWhitespace(
-            Tuple((
-                Element(Name('None')), 
-                Element(Dict(tuple())), 
-                Element(List([Element(val.value) for val in contents])))), 
+            BmxFragment(
+                start_fragment=StartFragment(opener),
+                end_fragment=EndFragment(closer),
+                contents=[Element(val.value) for val in contents]
+            ),
             opener.whitespace_before)
 
 
