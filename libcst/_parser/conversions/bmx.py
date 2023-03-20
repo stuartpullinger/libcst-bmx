@@ -1,8 +1,9 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
+import keyword
 import typing
 
-from libcst._nodes.expression import Dict, DictElement, Element, List, Name, Tuple
+from libcst._nodes.expression import Dict, DictElement, Element, List, Name, SimpleString, Tuple
 
 from libcst._add_slots import add_slots
 from libcst._nodes.base import CSTNode, CSTVisitorT
@@ -113,17 +114,16 @@ def convert_bmx_tag(config: ParserConfig, children: typing.Sequence[typing.Any])
     return children
 
 # bmx_attribute: (NAME | atom_string) ['=' atom]
-# TODO: look at import keyword; keyword.kwlist  and build a string to allow bmx attributes to be
-# the same as python keywords.
-# import keyword
-# keyword_attributes = ' | '.join(f"'{kw}'" for kw in keyword.kwlist if kw.is_lower())
-@with_production( "bmx_attribute", "('class' | NAME | atom_string) ['=' atom]")
+# Allow attribute keys to be python keywords eg. 'class', etc
+# TODO: maybe just list them as below may produce different output on different versions of python
+keyword_attributes = ' | '.join(f"'{kw}'" for kw in keyword.kwlist if kw.islower())
+@with_production( "bmx_attribute", f"({keyword_attributes} | NAME | atom_string) ['=' atom]")
 def convert_bmx_attribute(
     config: ParserConfig, children: typing.Sequence[typing.Any]
 ) -> typing.Any:
     key, eq, value = children
     if key.type.name == "NAME":
-        key_node = Name(key.string)
+        key_node = SimpleString(repr(key.string))
     else:
         key_node = key
     # TODO: if eq and value are missing (how is this represented?), assign True token to value
