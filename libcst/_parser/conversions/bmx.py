@@ -12,6 +12,7 @@ from libcst._nodes.op import (
         GreaterThan,
 )
 from libcst._nodes.expression import (
+    BaseExpression,
     Attribute,
     LeftParen,
     RightParen,
@@ -177,6 +178,44 @@ def convert_bmx_selfclosing(
 @with_production("bmx_tag", "'<' dotted_name bmx_attribute*")
 def convert_bmx_tag(config: ParserConfig, children: typing.Sequence[typing.Any]) -> typing.Any:
     return children
+
+@add_slots
+@dataclass(frozen=True)
+class BmxAttribute(CSTNode):
+    """
+    A BMX attribute node
+    """
+    key: SimpleString
+    value: typing.Optional[BaseExpression]
+
+    #: Whitespace after the key, but before the colon in ``key : value``.
+    whitespace_before_equals: BaseParenthesizableWhitespace = SimpleWhitespace.field("")
+    #: Whitespace after the colon, but before the value in ``key : value``.
+    whitespace_after_equals: BaseParenthesizableWhitespace = SimpleWhitespace.field("")
+
+    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxAttribute":  
+        value_keyword = {}
+        if self.value is not None:
+            value_keyword = dict(
+                whitespace_before_equals=visit_required(
+                    self, "whitespace_before_equals", self.whitespace_before_equals, visitor
+                ),
+                whitespace_after_equals=visit_required(
+                    self, "whitespace_after_equals", self.whitespace_after_equals, visitor
+                ),
+                value=visit_required(self, "value", self.value, visitor),
+            )
+
+        return BmxAttribute(
+            key=visit_required(self, "key", self.key, visitor),
+            **value_keyword
+        )
+
+    def _codegen_impl(self, state: CodegenState) -> None:
+        self.key._codegen(state)
+        if self.value is not None:
+            state.add_token('=')
+            self.key._codegen(state)
 
 # bmx_attribute: (NAME | atom_string) ['=' atom]
 # Allow attribute keys to be python keywords eg. 'class', etc
