@@ -3,6 +3,8 @@ from dataclasses import dataclass
 import keyword
 import typing
 
+from mypy_extensions import TypedDict
+
 from libcst._nodes.expression import Dict, DictElement, Element, List, Name, SimpleString, Tuple
 
 from libcst._add_slots import add_slots
@@ -46,22 +48,25 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
     """
     A BMX open-close node
     """
-    contents: typing.Sequence[BaseElement]
     
-    start_fragment: StartFragment = StartFragment.field()
-    end_fragment: EndFragment = EndFragment.field()
+    close_opentag: GreaterThan = GreaterThan.field()
+    contents: typing.Sequence[BaseElement]
+    open_closetag: LessThanSlash = LessThanSlash.field()
+    close_ref: typing.Sequence[BaseElement]
+    close_closetag: typing.Sequence[BaseElement]
+    
 
     lpar: typing.Sequence[LeftParen] = ()
     #: Sequence of parenthesis for precedence dictation.
     rpar: typing.Sequence[RightParen] = ()
 
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxFragment":
-        return BmxFragment(
-            lpar=visit_sequence(self, "lpar", self.lpar, visitor),
-            start_fragment=visit_required(self, "start_fragment", self.start_fragment, visitor),
-            contents=visit_sequence(self, "contents", self.contents, visitor),
-            end_fragment=visit_required(self, "end_fragment", self.end_fragment, visitor),
-            rpar=visit_sequence(self, "rpar", self.rpar, visitor),
+        return BmxOpenClose(
+            close_opentag=close_opentag,
+            contents=contents,
+            open_closetag=open_closetag,
+            close_ref=close_ref,
+            close_closetag=close_closetag,
         )
 
     def _codegen_impl(self, state: CodegenState) -> None:
@@ -144,19 +149,24 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
     tag, rest = children
     l_angle, ref, *attributes = tag
     if len(rest) > 1:  # bmx_openclose
-        close_opentag, *contents, open_closetag, close_name, close_closetag = rest
+        close_opentag, *contents, open_closetag, close_ref, close_closetag = rest
         return WithLeadingWhitespace(
                 BmxOpenClose(
+                    close_opentag=close_opentag,
                     contents=contents,
-                    # TODO: args here
-                    )
+                    open_closetag=open_closetag,
+                    close_ref=close_ref,
+                    close_closetag=close_closetag,
+                    ),
                 l_angle.whitespace_before)
     # bmx_selfclosing
     return WithLeadingWhitespace(       
-            Tuple((
-                Element(child), 
-                Element(Dict(tuple(attributes))), 
-                Element(List([Element(val.value) for val in contents])))), 
+                BmxSelfClosing(
+                    ref=ref,
+                    attributes=attributes,
+                    opener=l_angle,
+                    closer=rest,
+                    ),
             l_angle.whitespace_before)
 
 
@@ -194,10 +204,16 @@ class BmxAttribute(CSTNode):
     #: Whitespace after the colon, but before the value in ``key : value``.
     whitespace_after_equals: BaseParenthesizableWhitespace = SimpleWhitespace.field("")
 
+    class KeywordArgsT(typing.TypedDict):
+        whitespace_before_equals: CSTNode
+        whitespace_after_equals: CSTNode
+        value: CSTNode
+
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxAttribute":  
         value_keyword = {}
         if self.value is not None:
-            value_keyword = dict(
+            # Do I _really_ have to use a typed dict here to please the type checker?
+            value_keyword = self.KeywordArgsT(
                 whitespace_before_equals=visit_required(
                     self, "whitespace_before_equals", self.whitespace_before_equals, visitor
                 ),
