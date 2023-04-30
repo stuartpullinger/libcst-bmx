@@ -139,19 +139,20 @@ class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
 # bmx: bmx_selfclosing | bmx_openclose | bmx_fragment
 @with_production("bmx", "bmx_fragment | bmx_tag (bmx_selfclosing | bmx_openclose)")
 def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> typing.Any:
-    if len(children) == 1:
+    if len(children) == 1:      # bmx_fragment
         return children[0]
     tag, rest = children
-    l_angle, child, *attributes = tag
-    if len(rest) == 2:  # TODO should this be len(rest) == 1 ?
+    l_angle, ref, *attributes = tag
+    if len(rest) > 1:  # bmx_openclose
+        close_opentag, *contents, open_closetag, close_name, close_closetag = rest
         return WithLeadingWhitespace(
-                Tuple((
-                    Element(child), 
-                    Element(Dict(tuple(attributes))), 
-                    Element(Name("None")))), 
+                BmxOpenClose(
+                    contents=contents,
+                    # TODO: args here
+                    )
                 l_angle.whitespace_before)
-    close_opentag, *contents, open_closetag, close_name, close_closetag = rest
-    return WithLeadingWhitespace(
+    # bmx_selfclosing
+    return WithLeadingWhitespace(       
             Tuple((
                 Element(child), 
                 Element(Dict(tuple(attributes))), 
@@ -232,13 +233,13 @@ def convert_bmx_attribute(
         key_node = key
     # TODO: if eq and value are missing (how is this represented?), assign True token to value
     # OR: create a new node type for single name attributes (what are these called?), then do the conversion in the codemod
-    element = DictElement(          # TODO: need a new node type here as this is changing the semantics of the what was written
+    element = BmxAttribute(          # TODO: need a new node type here as this is changing the semantics of the what was written
         key_node,
         value.value,
-        whitespace_before_colon=parse_parenthesizable_whitespace(
+        whitespace_before_equals=parse_parenthesizable_whitespace(
             config, eq.whitespace_before
         ),
-        whitespace_after_colon=parse_parenthesizable_whitespace(
+        whitespace_after_equals=parse_parenthesizable_whitespace(
             config, eq.whitespace_after
         ),
     )
