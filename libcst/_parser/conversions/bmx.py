@@ -5,17 +5,18 @@ import typing
 
 from mypy_extensions import TypedDict
 
-from libcst._nodes.expression import Dict, DictElement, Element, List, Name, SimpleString, Tuple
+from libcst._nodes.expression import Element, SimpleString 
 
 from libcst._add_slots import add_slots
 from libcst._nodes.base import CSTNode, CSTVisitorT
 from libcst._nodes.op import (
         LessThan,
+        LessThanSlash,
         GreaterThan,
+        SlashGreaterThan
 )
 from libcst._nodes.expression import (
     BaseExpression,
-    Attribute,
     LeftParen,
     RightParen,
     BaseElement,
@@ -27,13 +28,6 @@ from libcst._nodes.internal import (
     visit_required,
     visit_sequence,
 )
-from libcst._nodes.op import (
-    LeftShift,
-    RightShift
-)
-
-from libcst._nodes.expression import Name
-from libcst._parser.parso.python.py_token import TokenType
 from libcst._parser.production_decorator import with_production
 from libcst._parser.types.config import ParserConfig
 from libcst._parser.types.partials import (
@@ -101,7 +95,7 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
     open_opentag: LessThan = LessThan.field()
     close_opentag: GreaterThan = GreaterThan.field()
     open_closetag: LessThanSlash = LessThanSlash.field()
-    close_closetag: SlashGreaterThan = SlashGreaterThan.field()
+    close_closetag: GreaterThan = GreaterThan.field()
 
     lpar: typing.Sequence[LeftParen] = ()
     #: Sequence of parenthesis for precedence dictation.
@@ -147,28 +141,6 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
 
 @add_slots
 @dataclass(frozen=True)
-class EndSelfClosing(CSTNode):
-    """
-    A '/>' node
-    """
-
-    #: Any space that appears directly after this.
-    whitespace_after: BaseParenthesizableWhitespace = SimpleWhitespace.field("")
-
-    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "EndSelfClosing":
-        return EndSelfClosing(
-            whitespace_after=visit_required(
-                self, "whitespace_after", self.whitespace_after, visitor
-            )
-        )
-
-    def _codegen_impl(self, state: CodegenState) -> None:
-        state.add_token("/>")
-        self.whitespace_after._codegen(state)
-
-
-@add_slots
-@dataclass(frozen=True)
 class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
     """
     A BMX self-closing node
@@ -177,7 +149,7 @@ class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
     attributes: typing.Sequence[BmxAttribute]
     
     opener: LessThan = LessThan.field()
-    closer: EndSelfClosing = EndSelfClosing.field()
+    closer: SlashGreaterThan = SlashGreaterThan.field()
 
     lpar: typing.Sequence[LeftParen] = ()
     #: Sequence of parenthesis for precedence dictation.
@@ -211,27 +183,30 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
     if len(children) == 1:      # bmx_fragment
         return children[0]
     tag, rest = children
-    l_angle, ref, *attributes = tag
+    opener, ref, *attributes = tag
     if len(rest) > 1:  # bmx_openclose
         close_opentag, *contents, open_closetag, close_ref, close_closetag = rest
         return WithLeadingWhitespace(
                 BmxOpenClose(
+                    open_opentag=opener,
+                    ref=ref,
+                    attributes=attributes,
                     close_opentag=close_opentag,
                     contents=contents,
                     open_closetag=open_closetag,
                     close_ref=close_ref,
                     close_closetag=close_closetag,
                     ),
-                l_angle.whitespace_before)
+                opener.whitespace_before)
     # bmx_selfclosing
     return WithLeadingWhitespace(       
                 BmxSelfClosing(
                     ref=ref,
                     attributes=attributes,
-                    opener=l_angle,
+                    opener=opener,
                     closer=rest,
                     ),
-            l_angle.whitespace_before)
+            opener.whitespace_before)
 
 
 # bmx_openclose: '<' dotted_name [bmx_attribute]* '>' atom* '</' dotted_name '>'
@@ -269,7 +244,7 @@ def convert_bmx_attribute(
         key_node = key
     # TODO: if eq and value are missing (how is this represented?), assign True token to value
     # OR: create a new node type for single name attributes (what are these called?), then do the conversion in the codemod
-    element = BmxAttribute(          # TODO: need a new node type here as this is changing the semantics of the what was written
+    element = BmxAttribute(          
         key_node,
         value.value,
         whitespace_before_equals=parse_parenthesizable_whitespace(

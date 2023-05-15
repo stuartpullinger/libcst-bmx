@@ -615,6 +615,23 @@ class LessThan(BaseCompOp, _BaseOneTokenOp):
 
 @add_slots
 @dataclass(frozen=True)
+class LessThanSlash(BaseCompOp, _BaseOneTokenOp):
+    """
+    A '</' for BMX.
+    """
+
+    #: Any space that appears directly before this operator.
+    whitespace_before: BaseParenthesizableWhitespace = SimpleWhitespace.field(" ")
+
+    #: Any space that appears directly after this operator.
+    whitespace_after: BaseParenthesizableWhitespace = SimpleWhitespace.field(" ")
+
+    def _get_token(self) -> str:
+        return "</"
+
+
+@add_slots
+@dataclass(frozen=True)
 class GreaterThan(BaseCompOp, _BaseOneTokenOp):
     """
     A comparision operator that can be used in a :class:`Comparison` expression.
@@ -628,6 +645,23 @@ class GreaterThan(BaseCompOp, _BaseOneTokenOp):
 
     def _get_token(self) -> str:
         return ">"
+
+
+@add_slots
+@dataclass(frozen=True)
+class SlashGreaterThan(BaseCompOp, _BaseOneTokenOp):
+    """
+    A '/>' for BMX.
+    """
+
+    #: Any space that appears directly before this operator.
+    whitespace_before: BaseParenthesizableWhitespace = SimpleWhitespace.field(" ")
+
+    #: Any space that appears directly after this operator.
+    whitespace_after: BaseParenthesizableWhitespace = SimpleWhitespace.field(" ")
+
+    def _get_token(self) -> str:
+        return "/>"
 
 
 @add_slots
