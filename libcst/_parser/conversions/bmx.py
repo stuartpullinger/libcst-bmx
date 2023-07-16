@@ -159,7 +159,7 @@ class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
         return BmxSelfClosing(
             lpar=visit_sequence(self, "lpar", self.lpar, visitor),
             opener=visit_required(self, "opener", self.opener, visitor),
-            ref=visit_sequence(self, "ref", self.ref, visitor),
+            ref=visit_required(self, "ref", self.ref, visitor),
             attributes=visit_sequence(self, "attributes", self.attributes, visitor),
             closer=visit_required(self, "closer", self.closer, visitor),
             rpar=visit_sequence(self, "rpar", self.rpar, visitor),
@@ -168,12 +168,13 @@ class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
     def _codegen_impl(self, state: CodegenState) -> None:
         with self._parenthesize(state):
             self.opener._codegen(state)
+            self.ref._codegen(state)
             attributes = self.attributes
             for idx, el in enumerate(attributes):
                 el._codegen(
                     state,
-                    default_comma=(idx < len(attributes) - 1),
-                    default_comma_whitespace=True,
+                    #default_comma=(idx < len(attributes) - 1),
+                    #default_comma_whitespace=True,
                 )
             self.closer._codegen(state)
 
@@ -203,8 +204,8 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
                 BmxSelfClosing(
                     ref=ref,
                     attributes=attributes,
-                    opener=opener,
-                    closer=rest,
+                    opener=LessThan(),
+                    closer=SlashGreaterThan(),
                     ),
             opener.whitespace_before)
 
