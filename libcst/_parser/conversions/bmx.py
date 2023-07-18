@@ -189,14 +189,14 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
         close_opentag, *contents, open_closetag, close_ref, close_closetag = rest
         return WithLeadingWhitespace(
                 BmxOpenClose(
-                    open_opentag=opener,
+                    open_opentag=LessThan(),
                     ref=ref,
                     attributes=attributes,
-                    close_opentag=close_opentag,
+                    close_opentag=GreaterThan(),
                     contents=contents,
-                    open_closetag=open_closetag,
+                    open_closetag=LessThanSlash(),
                     close_ref=close_ref,
-                    close_closetag=close_closetag,
+                    close_closetag=GreaterThan(),
                     ),
                 opener.whitespace_before)
     # bmx_selfclosing
