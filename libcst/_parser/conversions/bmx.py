@@ -92,10 +92,10 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
     contents: typing.Sequence[BaseElement]
     close_ref: typing.Any
     
-    open_opentag: LessThan = LessThan.field()
-    close_opentag: GreaterThan = GreaterThan.field()
-    open_closetag: LessThanSlash = LessThanSlash.field()
-    close_closetag: GreaterThan = GreaterThan.field()
+    #open_opentag: LessThan = LessThan.field()
+    #close_opentag: GreaterThan = GreaterThan.field()
+    #open_closetag: LessThanSlash = LessThanSlash.field()
+    #close_closetag: GreaterThan = GreaterThan.field()
 
     lpar: typing.Sequence[LeftParen] = ()
     #: Sequence of parenthesis for precedence dictation.
@@ -106,38 +106,42 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
 
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxOpenClose":
         return BmxOpenClose(
-            open_opentag=visit_required(self, 'open_opentag', self.open_opentag, visitor),
+            #open_opentag=visit_required(self, 'open_opentag', self.open_opentag, visitor),
             ref=visit_required(self, 'ref', self.ref, visitor),
             attributes=visit_sequence(self, 'attributes', self.attributes, visitor),
-            close_opentag=visit_required(self, 'close_opentag', self.close_opentag, visitor),
-            contents=visit_sequence(self, 'contents', self.contents, visitor),
-            open_closetag=visit_required(self, 'open_closetag', self.open_closetag, visitor),
+            #close_opentag=visit_required(self, 'close_opentag', self.close_opentag, visitor),
+            contents=visit_sequence(self, 'contents', [i.value for i in self.contents], visitor),
+            #open_closetag=visit_required(self, 'open_closetag', self.open_closetag, visitor),
             close_ref=visit_required(self, 'close_ref', self.close_ref, visitor),
-            close_closetag=visit_required(self, 'close_closetag', self.close_closetag, visitor),
+            #close_closetag=visit_required(self, 'close_closetag', self.close_closetag, visitor),
         )
 
     def _codegen_impl(self, state: CodegenState) -> None:
         with self._parenthesize(state):
-            self.open_opentag._codegen(state)
+            #self.open_opentag._codegen(state)
+            state.add_token("<")
             self.ref._codegen(state)
             attributes = self.attributes
             for idx, el in enumerate(attributes):
                 el._codegen(
                     state,
-                    default_comma=(idx < len(attributes) - 1),
-                    default_comma_whitespace=True,
+                    #default_comma=(idx < len(attributes) - 1),
+                    #default_comma_whitespace=True,
                 )
-            self.close_opentag._codegen(state)
+            #self.close_opentag._codegen(state)
+            state.add_token(">")
             elements = self.contents
             for idx, el in enumerate(elements):
                 el._codegen(
                     state,
-                    default_comma=(idx < len(elements) - 1),
-                    default_comma_whitespace=True,
+                    #default_comma=(idx < len(elements) - 1),
+                    #default_comma_whitespace=True,
                 )
-            self.open_closetag._codegen(state)
+            #self.open_closetag._codegen(state)
+            state.add_token("</")
             self.close_ref._codegen(state)
-            self.close_closetag._codegen(state)
+            #self.close_closetag._codegen(state)
+            state.add_token(">")
 
 @add_slots
 @dataclass(frozen=True)
@@ -154,6 +158,8 @@ class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
     lpar: typing.Sequence[LeftParen] = ()
     #: Sequence of parenthesis for precedence dictation.
     rpar: typing.Sequence[RightParen] = ()
+
+    whitespace_before = None
 
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxSelfClosing":
         return BmxSelfClosing(
@@ -189,23 +195,25 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
         close_opentag, *contents, open_closetag, close_ref, close_closetag = rest
         return WithLeadingWhitespace(
                 BmxOpenClose(
-                    open_opentag=opener,
+                    #open_opentag=LessThan(whitespace_before=opener.whitespace_before),
                     ref=ref,
                     attributes=attributes,
-                    close_opentag=close_opentag,
+                    #close_opentag=GreaterThan(whitespace_before=close_opentag.whitespace_before),
                     contents=contents,
-                    open_closetag=open_closetag,
+                    #open_closetag=LessThanSlash(whitespace_before=open_closetag.whitespace_before),
                     close_ref=close_ref,
-                    close_closetag=close_closetag,
+                    #close_closetag=GreaterThan(whitespace_before=close_closetag.whitespace_before),
+               #     )
                     ),
                 opener.whitespace_before)
     # bmx_selfclosing
     return WithLeadingWhitespace(       
-                BmxSelfClosing(
+            BmxSelfClosing(
                     ref=ref,
                     attributes=attributes,
-                    opener=LessThan(),
-                    closer=SlashGreaterThan(),
+                    opener=LessThan(whitespace_before=opener.whitespace_before),
+                    closer=SlashGreaterThan(whitespace_before=rest[0].whitespace_before),
+         #           )
                     ),
             opener.whitespace_before)
 
