@@ -5,15 +5,17 @@ import typing
 
 from mypy_extensions import TypedDict
 
-from libcst._nodes.expression import Element, SimpleString 
+from libcst._nodes.expression import Element, SimpleString
 
 from libcst._add_slots import add_slots
 from libcst._nodes.base import CSTNode, CSTVisitorT
 from libcst._nodes.op import (
         LessThan,
-        LessThanSlash,
         GreaterThan,
-        SlashGreaterThan
+)
+from libcst._nodes.bmx import (
+    LessThanSlash,
+    SlashGreaterThan
 )
 from libcst._nodes.expression import (
     BaseExpression,
@@ -55,7 +57,7 @@ class BmxAttribute(CSTNode):
         whitespace_after_equals: CSTNode
         value: CSTNode
 
-    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxAttribute":  
+    def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxAttribute":
         value_keyword = {}
         if self.value is not None:
             # Do I _really_ have to use a typed dict here to please the type checker?
@@ -86,12 +88,12 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
     """
     A BMX open-close node
     """
-    
+
     ref: typing.Any
     attributes: typing.Sequence[BmxAttribute]
     contents: typing.Sequence[BaseElement]
     close_ref: typing.Any
-    
+
     #open_opentag: LessThan = LessThan.field()
     #close_opentag: GreaterThan = GreaterThan.field()
     #open_closetag: LessThanSlash = LessThanSlash.field()
@@ -102,7 +104,7 @@ class BmxOpenClose(_BaseParenthesizedNode, CSTNode):
     rpar: typing.Sequence[RightParen] = ()
 
     def _validate(self) -> None:
-        assert self.ref.deep_equals(self.close_ref) 
+        assert self.ref.deep_equals(self.close_ref)
 
     def _visit_and_replace_children(self, visitor: CSTVisitorT) -> "BmxOpenClose":
         return BmxOpenClose(
@@ -151,7 +153,7 @@ class BmxSelfClosing(_BaseParenthesizedNode, CSTNode):
     """
     ref: typing.Any
     attributes: typing.Sequence[BmxAttribute]
-    
+
     opener: LessThan = LessThan.field()
     closer: SlashGreaterThan = SlashGreaterThan.field()
 
@@ -207,7 +209,7 @@ def convert_bmx(config: ParserConfig, children: typing.Sequence[typing.Any]) -> 
                     ),
                 opener.whitespace_before)
     # bmx_selfclosing
-    return WithLeadingWhitespace(       
+    return WithLeadingWhitespace(
             BmxSelfClosing(
                     ref=ref,
                     attributes=attributes,
@@ -253,7 +255,7 @@ def convert_bmx_attribute(
         key_node = key
     # TODO: if eq and value are missing (how is this represented?), assign True token to value
     # OR: create a new node type for single name attributes (what are these called?), then do the conversion in the codemod
-    element = BmxAttribute(          
+    element = BmxAttribute(
         key_node,
         value.value,
         whitespace_before_equals=parse_parenthesizable_whitespace(
@@ -317,7 +319,7 @@ class BmxFragment(_BaseParenthesizedNode, CSTNode):
     A BMX fragment node
     """
     contents: typing.Sequence[BaseElement]
-    
+
     start_fragment: StartFragment = StartFragment.field()
     end_fragment: EndFragment = EndFragment.field()
 
